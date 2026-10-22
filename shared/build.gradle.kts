@@ -53,6 +53,9 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.material.kolor.material3)
+            implementation(libs.tabler.icons.outline)
+            implementation(libs.tabler.icons.filled)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
