@@ -1,5 +1,6 @@
 package com.gipflig.mindwtr_redesign.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,10 +17,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,12 +32,14 @@ import com.composables.icons.tabler.Tabler
 import com.composables.icons.tabler.outline.Bolt
 import com.composables.icons.tabler.outline.Book
 import com.composables.icons.tabler.outline.Briefcase
+import com.composables.icons.tabler.outline.Eye
+import com.composables.icons.tabler.outline.Filter
 import com.composables.icons.tabler.outline.Focus2
 import com.composables.icons.tabler.outline.Heart
 import com.composables.icons.tabler.outline.Home
 import com.composables.icons.tabler.outline.ListCheck
-import com.composables.icons.tabler.outline.Mountain
-import com.composables.icons.tabler.outline.ShoppingCart
+import com.composables.icons.tabler.outline.Selector
+import com.gipflig.mindwtr_redesign.formatToday
 
 // --- Generated code start ---
 fun sampleTasksFocused(): List<TaskData> = listOf(
@@ -45,41 +50,92 @@ fun sampleTasksFocused(): List<TaskData> = listOf(
 fun sampleTasksUnfocused(): List<TaskData> = listOf(
     TaskData("Buy groceries", "Home", Tabler.Outline.Home, focused = false, subtaskAmount = 0 to 6),
     TaskData("Reply to client emails", "Work", Tabler.Outline.Briefcase, focused = false),
+    TaskData("Plan weekend hike", focused = false),
     TaskData("Read chapter 5", "Learning", Tabler.Outline.Book, focused = false, subtaskAmount = 1 to 2),
     TaskData("Fix leaking kitchen tap", "Home", Tabler.Outline.Home, focused = false),
-    TaskData("Plan weekend hike", focused = false),
 )
 // --- Generated code end ---
 
+
 @Composable
-fun FocusScreen() {
-    LazyColumn(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+fun SectionHeader(sectionName: String, amount: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.height(IntrinsicSize.Min)
     ) {
-        item {
-            Text("Focused (${sampleTasksFocused().size})", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        items(sampleTasksFocused()) {
-            it.Task()
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Next Actions (${sampleTasksUnfocused().size})", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        items(sampleTasksUnfocused()) {
-            it.Task()
+        Text(
+            sectionName,
+            style = MaterialTheme.typography.headlineSmall
+        )
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            Box(modifier = Modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
+                Text(amount.toString())
+            }
         }
     }
 }
 
+@Composable
+fun FocusScreen() {
+    Scaffold(topBar = { FocusScreenToolbar() }) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).padding(top = paddingValues.calculateTopPadding()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                SectionHeader("Focused", sampleTasksFocused().size)
+            }
+
+            items(sampleTasksFocused()) {
+                key(it.name) {
+                    it.Task()
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                SectionHeader("Next Actions", sampleTasksUnfocused().size)
+            }
+
+            items(sampleTasksUnfocused()) {
+                key(it.name) {
+                    it.Task()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FocusScreenToolbar() {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        modifier = Modifier.padding(horizontal = 8.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Text(formatToday())
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(Tabler.Outline.Eye, contentDescription = "View options")
+            Icon(Tabler.Outline.Filter, contentDescription = "Filters")
+            Icon(Tabler.Outline.Selector, contentDescription = "Collapse non-focused")
+        }
+    }
+}
+
+
 data class TaskData(
     val name: String,
     val areaName: String? = null,
-    val areaIcon: ImageVector? = null,
+    val areaIcon: ImageVector? = null,  // Mixing state and UI here needs changing
     val focused: Boolean,
     val subtaskAmount: Pair<Int, Int>? = null,
 ) {
@@ -132,9 +188,9 @@ fun FocusScreenTask(
                 }
             }
             Surface(
-                shape = RoundedCornerShape(connectedCornerRadius, 16.dp, connectedCornerRadius, connectedCornerRadius),
+                shape = focusContainerShape,
                 color = if (focused) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                modifier = Modifier.fillMaxHeight().aspectRatio(1f),
+                modifier = Modifier.fillMaxHeight().aspectRatio(1f).clickable { },
             ) {
                 Box(modifier = Modifier.fillMaxHeight().aspectRatio(1f).padding(16.dp), contentAlignment = Alignment.Center) {
                     Icon(Tabler.Outline.Focus2, contentDescription = "Focus Task")

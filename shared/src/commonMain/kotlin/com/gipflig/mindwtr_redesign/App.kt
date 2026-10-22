@@ -36,7 +36,7 @@ import mindwtr_redesign.shared.generated.resources.compose_multiplatform
 fun App() {
     // Navigation placeholder
     var currentScreen by remember { mutableStateOf(Screen.Focus) }
-    // Generate Material Themes at
+    // Generate Material Themes at https://next.materialkolor.com/
     DynamicMaterialTheme(
         seedColor = Color(0xFF359BA9),
         isDark = isSystemInDarkTheme(),
