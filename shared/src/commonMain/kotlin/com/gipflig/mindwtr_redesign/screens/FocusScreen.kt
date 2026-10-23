@@ -19,10 +19,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,17 +47,70 @@ import com.composables.icons.tabler.outline.Selector
 import com.gipflig.mindwtr_redesign.formatToday
 
 // --- Generated code start ---
-fun sampleTasksFocused(): List<TaskData> = listOf(
-    TaskData("Finish quarterly report", "Work", Tabler.Outline.Briefcase, focused = true, subtaskAmount = 2 to 4),
-    TaskData("Book dentist appointment", "Health", Tabler.Outline.Heart, focused = true),
-)
-
-fun sampleTasksUnfocused(): List<TaskData> = listOf(
-    TaskData("Buy groceries", "Home", Tabler.Outline.Home, focused = false, subtaskAmount = 0 to 6),
-    TaskData("Reply to client emails", "Work", Tabler.Outline.Briefcase, focused = false),
-    TaskData("Plan weekend hike", focused = false),
-    TaskData("Read chapter 5", "Learning", Tabler.Outline.Book, focused = false, subtaskAmount = 1 to 2),
-    TaskData("Fix leaking kitchen tap", "Home", Tabler.Outline.Home, focused = false),
+fun sampleTasks(): List<TaskData> = listOf(
+    TaskData(
+        name = "Finish quarterly report",
+        areaName = "Work",
+        areaIcon = Tabler.Outline.Briefcase,
+        focused = true,
+        contextName = "@computer",
+        subtasks = listOf(
+            "Gather sales figures" to true,
+            "Draft summary" to true,
+            "Create charts" to false,
+            "Send to manager" to false,
+        ),
+    ),
+    TaskData(
+        name = "Book dentist appointment",
+        areaName = "Health",
+        areaIcon = Tabler.Outline.Heart,
+        focused = true,
+        contextName = "@phone",
+    ),
+    TaskData(
+        name = "Buy groceries",
+        areaName = "Home",
+        areaIcon = Tabler.Outline.Home,
+        focused = false,
+        contextName = "@errands",
+        subtasks = listOf(
+            "Milk" to false,
+            "Eggs" to false,
+            "Bread" to false,
+            "Vegetables" to false,
+            "Coffee" to false,
+            "Pasta" to false,
+        ),
+    ),
+    TaskData(
+        name = "Reply to client emails",
+        areaName = "Work",
+        areaIcon = Tabler.Outline.Briefcase,
+        focused = false,
+        contextName = "@computer",
+    ),
+    TaskData(
+        name = "Plan weekend hike",
+        focused = false,
+    ),
+    TaskData(
+        name = "Read chapter 5",
+        areaName = "Learning",
+        areaIcon = Tabler.Outline.Book,
+        focused = false,
+        subtasks = listOf(
+            "Read first half" to true,
+            "Take notes" to false,
+        ),
+    ),
+    TaskData(
+        name = "Fix leaking kitchen tap",
+        areaName = "Home",
+        areaIcon = Tabler.Outline.Home,
+        focused = false,
+        contextName = "@home",
+    ),
 )
 // --- Generated code end ---
 
@@ -81,6 +139,10 @@ fun SectionHeader(sectionName: String, amount: Int) {
 
 @Composable
 fun FocusScreen() {
+    val tasks = remember { sampleTasks().toMutableStateList() }
+    val focusedTasks = tasks.filter { it.focused }
+    val unfocusedTasks = tasks.filter { !it.focused }
+
     Scaffold(topBar = { FocusScreenToolbar() }) { paddingValues ->
         LazyColumn(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).padding(top = paddingValues.calculateTopPadding()),
@@ -88,23 +150,23 @@ fun FocusScreen() {
         ) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader("Focused", sampleTasksFocused().size)
+                SectionHeader("Focused", focusedTasks.size)
             }
 
-            items(sampleTasksFocused()) {
+            items(focusedTasks) {
                 key(it.name) {
-                    it.Task()
+                    it.Task(onFocusChange = { newFocused -> tasks[tasks.indexOf(it)] = it.copy(focused = newFocused)})
                 }
             }
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader("Next Actions", sampleTasksUnfocused().size)
+                SectionHeader("Next Actions", unfocusedTasks.size)
             }
 
-            items(sampleTasksUnfocused()) {
+            items(unfocusedTasks) {
                 key(it.name) {
-                    it.Task()
+                    it.Task(onFocusChange = { newFocused -> tasks[tasks.indexOf(it)] = it.copy(focused = newFocused)})
                 }
             }
         }
@@ -137,10 +199,19 @@ data class TaskData(
     val areaName: String? = null,
     val areaIcon: ImageVector? = null,  // Mixing state and UI here needs changing
     val focused: Boolean,
-    val subtaskAmount: Pair<Int, Int>? = null,
+    val contextName: String? = null,
+    val subtasks: List<Pair<String, Boolean>>? = null,  // Pair of (name, completed)
 ) {
     @Composable
-    fun Task() = FocusScreenTask(name, areaName, areaIcon, focused, subtaskAmount)
+    fun Task(onClick: () -> Unit = {}, onFocusChange: (Boolean) -> Unit = {}, onAreaClick: () -> Unit = {}, onContextClick: () -> Unit = {}) = FocusScreenTask(
+        name = name,
+        areaName = areaName,
+        areaIcon = areaIcon,
+        contextName = contextName,
+        focused = focused,
+        subtaskAmount = subtasks?.let { Pair(subtasks.count { it.second }, subtasks.size) },
+        onClick = onClick, onFocusChange = onFocusChange, onAreaClick = onAreaClick, onContextClick = onContextClick
+    )
 }
 
 @Composable
@@ -148,14 +219,16 @@ fun FocusScreenTask(
     name: String = "Task",
     areaName: String? = "Area",
     areaIcon: ImageVector? = null,
+    contextName: String? = null,
     focused: Boolean = false,
     subtaskAmount: Pair<Int, Int>? = null,  // Pair of (completed, total). Total antipattern, of course, but it's fine for now.
+    onClick: () -> Unit = {}, onFocusChange: (Boolean) -> Unit = {}, onAreaClick: () -> Unit = {}, onContextClick: () -> Unit = {}
 ) {
     val connectedCornerRadius = 4.dp
 
     val containerColor = if (focused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
     val contentColor = if (focused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-    val chipsNeeded = subtaskAmount != null || areaName != null
+    val chipsNeeded = subtaskAmount != null || areaName != null || contextName != null
     val nameContainerShape = if (chipsNeeded) {
         RoundedCornerShape(16.dp, connectedCornerRadius, connectedCornerRadius, connectedCornerRadius)
     } else RoundedCornerShape(16.dp, connectedCornerRadius, connectedCornerRadius, 16.dp)
@@ -174,7 +247,7 @@ fun FocusScreenTask(
                 modifier = Modifier.weight(1f),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp).clickable(onClick = onClick),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -190,9 +263,9 @@ fun FocusScreenTask(
             Surface(
                 shape = focusContainerShape,
                 color = if (focused) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                modifier = Modifier.fillMaxHeight().aspectRatio(1f).clickable { },
+                modifier = Modifier.fillMaxHeight().aspectRatio(1f),
             ) {
-                Box(modifier = Modifier.fillMaxHeight().aspectRatio(1f).padding(16.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.fillMaxHeight().aspectRatio(1f).clickable { onFocusChange(!focused) }.padding(16.dp), contentAlignment = Alignment.Center) {
                     Icon(Tabler.Outline.Focus2, contentDescription = "Focus Task")
                 }
             }
@@ -205,11 +278,11 @@ fun FocusScreenTask(
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable(onClick = onClick),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (areaName != null) SuggestionChip(
-                    onClick = { },
+                    onClick = onAreaClick,
                     label = { Text(areaName, color = contentColor) },
                 )
 
@@ -230,6 +303,11 @@ fun FocusScreenTask(
                     }
                 )
 
+                if (contextName != null) SuggestionChip(
+                    onClick = onContextClick,
+                    label = { Text(contextName, color = SuggestionChipDefaults.elevatedSuggestionChipColors().labelColor) },
+                    colors = SuggestionChipDefaults.elevatedSuggestionChipColors(),
+                )
             }
         }
     }
